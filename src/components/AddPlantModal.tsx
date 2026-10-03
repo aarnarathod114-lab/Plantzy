@@ -654,7 +654,7 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({
                   type="url"
                   value={image}
                   onChange={(e) => setImage(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="https://example.com/my-plant.jpg"
                   className="w-full mt-1 px-3 py-2 text-xs rounded-xl border border-[#CCD8CF] outline-none"
                 />
               </div>

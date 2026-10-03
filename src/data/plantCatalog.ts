@@ -1,4 +1,5 @@
-import type { CatalogPlant } from '../types/plant';
+import type { CatalogEntry, CatalogPlant } from '../types/plant';
+import { plantArt } from '../utils/plantArt';
 import { INDIAN_CLASSICS } from './plants/indianClassics';
 import { POPULAR_HOUSEPLANTS } from './plants/houseplants';
 import { FLOWERING_FRAGRANT } from './plants/floweringFragrant';
@@ -13,15 +14,8 @@ import { HERBS_AND_MEDICINALS } from './plants/herbsAndMedicinals';
 import { KITCHEN_GARDEN } from './plants/kitchenGarden';
 import { TREES_AND_BONSAI } from './plants/treesAndBonsai';
 
-/**
- * The full plant catalog.
- *
- * The first seven collections are hand-written entries with photos. The rest
- * are built from compact rows on top of shared care archetypes (see
- * `careProfiles.ts` and `plants/define.ts`). `tests/catalog.test.ts` enforces
- * unique ids, names and botanical names and valid care data across all of them.
- */
-export const PLANT_CATALOG: CatalogPlant[] = [
+/** Hand-written entries; each gets a generated illustration, like the rest of the catalog. */
+const HAND_WRITTEN: CatalogEntry[] = [
   ...INDIAN_CLASSICS,
   ...POPULAR_HOUSEPLANTS,
   ...FLOWERING_FRAGRANT,
@@ -29,6 +23,18 @@ export const PLANT_CATALOG: CatalogPlant[] = [
   ...EXOTICS_EDIBLES,
   ...MORE_INDIAN_PLANTS,
   ...MORE_HOUSEPLANTS_AND_SUCCULENTS,
+];
+
+/**
+ * The full plant catalog.
+ *
+ * The first seven collections are written out in full. The rest are built from
+ * compact rows on top of shared care archetypes (see `careProfiles.ts` and
+ * `plants/define.ts`). `tests/catalog.test.ts` enforces unique ids, names and
+ * botanical names and valid care data across all of them.
+ */
+export const PLANT_CATALOG: CatalogPlant[] = [
+  ...HAND_WRITTEN.map((plant) => ({ ...plant, image: plantArt(plant.category, plant.id) })),
   ...FOLIAGE_COLLECTION,
   ...SUCCULENT_COLLECTION,
   ...FLOWERING_COLLECTION,

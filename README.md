@@ -7,6 +7,10 @@
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2022.12-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-React%2019-blue)
 
+**Live demo: [plantzy.vercel.app](https://plantzy.vercel.app)**
+
+![The Plantzy dashboard: today's routine on the left, live weather and upcoming tasks on the right](docs/dashboard.png)
+
 ---
 
 ## The problem
@@ -106,7 +110,7 @@ src/
     plants/            13 collections
   context/             App state and persistence
   components/          Views and modals
-tests/                 122 tests
+tests/                 123 tests
 ```
 
 ## How the care engine decides
@@ -174,7 +178,7 @@ Every plant still has its own care tip, which states what is specific to that pl
 
 ### Images
 
-The 152 original entries use photographs. The rest use deterministic SVG tiles generated in `plantArt.ts`, one glyph per category with tint and tilt varied by a hash of the plant id. The same generator is the fallback whenever a remote photo fails to load.
+Catalog and demo plants use deterministic SVG illustrations generated in `plantArt.ts`: one glyph per category, with tint and tilt varied by a hash of the plant id. A wrong photo is worse than no photo, and a thousand hotlinked stock images are neither accurate nor reliable, so the catalog ships none. Photos appear only where they are real: the ones you upload for your own plants.
 
 ## Getting started
 
@@ -251,7 +255,7 @@ AI routes are limited per IP and return `429 rate_limited` with a `Retry-After` 
 npm test
 ```
 
-122 tests run on Node's built-in test runner in about two seconds, with no test framework dependency.
+123 tests run on Node's built-in test runner in about two seconds, with no test framework dependency.
 
 | Suite | Covers |
 |---|---|
@@ -288,7 +292,7 @@ Plant identification and health assessment from a photo are uncertain, and the p
 - **Temperatures display in Celsius** even when Fahrenheit is selected in settings.
 - **Vacation mode produces the sitter guide only.** It does not yet change the routine.
 - **Fertilizing is not scheduled.** Feeding guidance is shown per plant but does not generate tasks.
-- **Photo reuse.** Some of the original catalog entries share stock photographs that do not show that exact plant.
+- **No catalog photographs.** Plants are shown as illustrations until verified photos are sourced.
 - **Care data is general guidance** written for typical conditions. Local climate, pot and soil matter more, which is why the engine leans on your own soil checks.
 - **TypeScript `strict` mode is not enabled** in the project config yet.
 - **The rate limiter and weather cache are in-memory**, which is exact for one process, best-effort on serverless, and would need a shared store to scale out.
@@ -310,7 +314,7 @@ Plant additions and rule improvements are welcome. See [CONTRIBUTING.md](CONTRIB
 
 ## Acknowledgements
 
-Weather data by [Open-Meteo](https://open-meteo.com/). Icons by [Lucide](https://lucide.dev/). Catalog photographs from [Unsplash](https://unsplash.com/). Built with React, Vite, Tailwind CSS and Express.
+Weather data by [Open-Meteo](https://open-meteo.com/). Icons by [Lucide](https://lucide.dev/). Built with React, Vite, Tailwind CSS and Express.
 
 ## License
 

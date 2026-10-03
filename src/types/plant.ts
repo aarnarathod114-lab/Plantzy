@@ -124,3 +124,6 @@ export interface CatalogPlant {
   fertilizingNotes: string;
   careTip: string;
 }
+
+/** A hand-written catalog entry. Its image is generated when the catalog is assembled. */
+export type CatalogEntry = Omit<CatalogPlant, 'image'>;

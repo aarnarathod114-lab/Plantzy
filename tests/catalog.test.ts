@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CARE_PROFILES } from '../src/data/careProfiles';
+import { DEMO_PLANTS } from '../src/data/demoData';
 import { CATALOG_COUNT_LABEL, PLANT_CATALOG, TOTAL_PLANT_COUNT } from '../src/data/plantCatalog';
 import { slugify } from '../src/data/plants/define';
 import { plantArt } from '../src/utils/plantArt';
@@ -71,6 +72,12 @@ describe('plant catalog integrity', () => {
     const shown = Number(CATALOG_COUNT_LABEL.replace(/[+,]/g, ''));
     assert.ok(CATALOG_COUNT_LABEL.endsWith('+'));
     assert.ok(shown <= TOTAL_PLANT_COUNT && TOTAL_PLANT_COUNT - shown < 50);
+  });
+
+  it('ships generated illustrations only, never hotlinked photos', () => {
+    for (const plant of [...PLANT_CATALOG, ...DEMO_PLANTS]) {
+      assert.ok(plant.image.startsWith('data:image/svg+xml,'), `${plant.id} uses a remote image`);
+    }
   });
 
   it('defines complete care archetypes', () => {
