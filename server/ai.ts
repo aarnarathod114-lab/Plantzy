@@ -7,6 +7,7 @@ import {
   type IdentifiedPlant,
   type ParsedImage,
 } from './validation.js';
+import { firstSuccessful } from './resilience.js';
 
 /**
  * Thin wrapper around the Gemini API.
@@ -15,6 +16,10 @@ import {
  * symptom notes, plant context) is passed as clearly delimited data, and the
  * system instruction tells the model to treat it as data. Model output is
  * never trusted for shape; it goes through the normalisers in `validation.ts`.
+ *
+ * Availability: hosted models are sometimes overloaded or rate limited. Each
+ * call tries the preferred model first and then the fallbacks, within a fixed
+ * time budget, so a busy model degrades the answer rather than the feature.
  */
 
 const ASSISTANT_SYSTEM = `You are Plantzy, a calm, observant plant care companion.
@@ -71,14 +76,6 @@ export class AiError extends Error {
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: NodeJS.Timeout;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new AiError('The AI request timed out.')), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
 function parseJson(text: string | undefined): unknown {
   if (!text) return null;
   try {
@@ -94,9 +91,36 @@ export interface AiService {
   healthCheck(image: ParsedImage | null, symptoms: string, plantContext: unknown): Promise<HealthAnalysis | null>;
 }
 
-export function createAiService(options: { apiKey: string; model: string; timeoutMs: number }): AiService {
+export interface AiServiceOptions {
+  apiKey: string;
+  /** Models to try, in order of preference. */
+  models: readonly string[];
+  /** Time allowed for one model call. */
+  attemptTimeoutMs: number;
+  /** Time allowed for the whole request, across all models. */
+  budgetMs: number;
+}
+
+type GenerateRequest = Omit<Parameters<GoogleGenAI['models']['generateContent']>[0], 'model'>;
+
+export function createAiService(options: AiServiceOptions): AiService {
   const client = new GoogleGenAI({ apiKey: options.apiKey });
-  const { model, timeoutMs } = options;
+
+  /** Run one request against the preferred model, falling back down the list on failure. */
+  function generate(request: GenerateRequest) {
+    return firstSuccessful(
+      options.models,
+      (model) => client.models.generateContent({ ...request, model }),
+      {
+        budgetMs: options.budgetMs,
+        perAttemptMs: options.attemptTimeoutMs,
+        onFailure: (model, error) => {
+          const status = (error as { status?: number }).status;
+          console.warn(`AI model ${model} failed${status ? ` (${status})` : ''}: ${(error as Error).name}`);
+        },
+      }
+    );
+  }
 
   function imagePart(image: ParsedImage): Part {
     return { inlineData: { mimeType: image.mimeType, data: image.data } };
@@ -104,14 +128,10 @@ export function createAiService(options: { apiKey: string; model: string; timeou
 
   return {
     async ask(question, userContext) {
-      const response = await withTimeout(
-        client.models.generateContent({
-          model,
-          contents: `<context>\n${boundedJson(userContext)}\n</context>\n\n<question>\n${question}\n</question>`,
-          config: { systemInstruction: ASSISTANT_SYSTEM, temperature: 0.7 },
-        }),
-        timeoutMs
-      );
+      const response = await generate({
+        contents: `<context>\n${boundedJson(userContext)}\n</context>\n\n<question>\n${question}\n</question>`,
+        config: { systemInstruction: ASSISTANT_SYSTEM },
+      });
       const answer = (response.text ?? '').trim();
       if (!answer) throw new AiError('The model returned an empty answer.');
       return answer;
@@ -124,14 +144,10 @@ export function createAiService(options: { apiKey: string; model: string; timeou
         text: description ? `${IDENTIFY_PROMPT}\n\n<description>\n${description}\n</description>` : IDENTIFY_PROMPT,
       });
 
-      const response = await withTimeout(
-        client.models.generateContent({
-          model,
-          contents: { parts },
-          config: { responseMimeType: 'application/json', temperature: 0.2 },
-        }),
-        timeoutMs
-      );
+      const response = await generate({
+        contents: { parts },
+        config: { responseMimeType: 'application/json' },
+      });
       return normaliseIdentification(parseJson(response.text));
     },
 
@@ -142,14 +158,10 @@ export function createAiService(options: { apiKey: string; model: string; timeou
         text: `${HEALTH_PROMPT}\n\n<notes>\n${symptoms || 'None provided.'}\n</notes>\n\n<plant>\n${boundedJson(plantContext, 4_000)}\n</plant>`,
       });
 
-      const response = await withTimeout(
-        client.models.generateContent({
-          model,
-          contents: { parts },
-          config: { responseMimeType: 'application/json', temperature: 0.3 },
-        }),
-        timeoutMs
-      );
+      const response = await generate({
+        contents: { parts },
+        config: { responseMimeType: 'application/json' },
+      });
       return normaliseHealthAnalysis(parseJson(response.text));
     },
   };

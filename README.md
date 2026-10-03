@@ -90,6 +90,7 @@ server/
   ai.ts                Gemini wrapper and prompts
   validation.ts        Input limits and model-output normalisation
   rateLimit.ts         In-memory fixed-window limiter
+  resilience.ts        Timeouts and model fallback within a time budget
   offlineAssistant.ts  General guidance when AI is unavailable
 src/
   utils/
@@ -105,7 +106,7 @@ src/
     plants/            13 collections
   context/             App state and persistence
   components/          Views and modals
-tests/                 115 tests
+tests/                 122 tests
 ```
 
 ## How the care engine decides
@@ -195,7 +196,8 @@ Plantzy runs without any configuration. To enable the AI features, copy `.env.ex
 | Variable | Default | Purpose |
 |---|---|---|
 | `GEMINI_API_KEY` | *(empty)* | Enables identification, health check and the assistant. Server-side only. |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | Model used for all three AI features. |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Preferred model for all three AI features. |
+| `GEMINI_FALLBACK_MODELS` | `gemini-3.7-flash,gemini-3.5-flash` | Tried in order when the preferred model is overloaded, rate limited or slow. |
 | `PORT` | `3000` | Port the server listens on. |
 | `TRUST_PROXY` | `0` | Set to `1` behind a reverse proxy so rate limits use the real client IP. Automatic on Vercel. |
 | `AI_RATE_LIMIT_PER_MINUTE` | `20` | AI requests allowed per IP per minute. |
@@ -249,7 +251,7 @@ AI routes are limited per IP and return `429 rate_limited` with a `Retry-After` 
 npm test
 ```
 
-115 tests run on Node's built-in test runner in about two seconds, with no test framework dependency.
+122 tests run on Node's built-in test runner in about two seconds, with no test framework dependency.
 
 | Suite | Covers |
 |---|---|
@@ -257,7 +259,7 @@ npm test
 | `insights.test.ts` | Streak and weekly counts, soil patterns, schedule projection, calendar history, demo date shifting, photo sizing |
 | `catalog.test.ts` | Integrity of all 1,012 entries and 50 archetypes, id generation, image generation |
 | `catalogSearch.test.ts` | Ranking, multi-script matching, filters, a per-keystroke time budget |
-| `server.test.ts` | Rate limiter, input validation, model-output normalisation, geocoding choice, forecast mapping, weather cache and failure paths |
+| `server.test.ts` | Rate limiter, input validation, model-output normalisation, geocoding choice, forecast mapping, weather cache and failure paths, model fallback and time budget |
 
 Time-dependent logic takes `now` as a parameter, and the weather service takes `fetch` as a dependency, so tests never touch the network or the real clock.
 
@@ -271,6 +273,7 @@ CI runs typecheck, tests and a production build on every push and pull request.
 - **Photos are resized in the browser** to 1280 px before upload, and a 480 px copy is what gets stored with a plant. A 10 MB phone photo becomes a request of a few hundred kilobytes.
 - **Model output is not trusted.** Responses are parsed and normalised: enum fields are coerced to known values, confidence is clamped to 0–100, and a missing confidence is treated as zero.
 - **Prompt-injection hygiene.** User-supplied text and context are passed as delimited data, and the system instruction tells the model to treat them as data.
+- **Model fallback.** Hosted models are sometimes overloaded. Each AI request tries the preferred model, then the fallbacks, inside a fixed time budget that is shorter than the host's request limit, so a busy model costs a few seconds rather than the feature.
 - **Rate limiting** on AI and weather routes, with a cap on tracked keys so the limiter cannot be used to exhaust memory.
 - **Security headers:** a Content-Security-Policy in production, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and `Permissions-Policy`.
 

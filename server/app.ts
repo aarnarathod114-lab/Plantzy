@@ -3,6 +3,7 @@ import { AiError, GENERIC_HEALTH_GUIDANCE, createAiService, type AiService } fro
 import { config } from './config.js';
 import { offlineAnswer } from './offlineAssistant.js';
 import { createRateLimiter } from './rateLimit.js';
+import { uniqueInOrder } from './resilience.js';
 import { LIMITS, ValidationError, cleanText, parseCoordinate, parseImage } from './validation.js';
 import { WeatherError, createWeatherService } from './weather.js';
 
@@ -18,7 +19,12 @@ app.disable('x-powered-by');
 if (config.trustProxy) app.set('trust proxy', 1);
 
 const ai: AiService | null = config.geminiApiKey
-  ? createAiService({ apiKey: config.geminiApiKey, model: config.geminiModel, timeoutMs: config.aiTimeoutMs })
+  ? createAiService({
+      apiKey: config.geminiApiKey,
+      models: uniqueInOrder([config.geminiModel, ...config.geminiFallbackModels]),
+      attemptTimeoutMs: config.aiAttemptTimeoutMs,
+      budgetMs: config.aiBudgetMs,
+    })
   : null;
 
 const weather = createWeatherService({

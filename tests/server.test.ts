@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { offlineAnswer } from '../server/offlineAssistant';
 import { createRateLimiter } from '../server/rateLimit';
+import { TimeoutError, firstSuccessful, uniqueInOrder, withTimeout } from '../server/resilience';
 import {
   LIMITS,
   ValidationError,
@@ -335,5 +336,64 @@ describe('offlineAnswer', () => {
 
   it('always gives a usable general answer', () => {
     assert.ok(offlineAnswer('asdf').length > 50);
+  });
+});
+
+describe('model fallback', () => {
+  const overloaded = Object.assign(new Error('high demand'), { status: 503 });
+  const options = { budgetMs: 1_000, perAttemptMs: 200 };
+
+  it('returns the first model that succeeds and stops there', async () => {
+    const tried: string[] = [];
+    const result = await firstSuccessful(['a', 'b', 'c'], async (model) => {
+      tried.push(model);
+      if (model === 'a') throw overloaded;
+      return `answer from ${model}`;
+    }, options);
+    assert.equal(result, 'answer from b');
+    assert.deepEqual(tried, ['a', 'b']);
+  });
+
+  it('reports each failure and throws the last error when every model fails', async () => {
+    const failures: string[] = [];
+    await assert.rejects(
+      firstSuccessful(['a', 'b'], async () => { throw overloaded; }, { ...options, onFailure: (model) => failures.push(model) }),
+      (err: Error & { status?: number }) => err.status === 503
+    );
+    assert.deepEqual(failures, ['a', 'b']);
+  });
+
+  it('moves on when a model is too slow', async () => {
+    const result = await firstSuccessful(['slow', 'fast'], (model) =>
+      model === 'slow' ? new Promise<string>(() => {}) : Promise.resolve('fast answer'),
+      { budgetMs: 1_000, perAttemptMs: 20 });
+    assert.equal(result, 'fast answer');
+  });
+
+  it('stops trying once the overall budget is spent', async () => {
+    let clock = 0;
+    const tried: string[] = [];
+    await assert.rejects(
+      firstSuccessful(['a', 'b', 'c'], async (model) => {
+        tried.push(model);
+        clock += 600;
+        throw overloaded;
+      }, { budgetMs: 1_000, perAttemptMs: 500, now: () => clock }),
+      TimeoutError
+    );
+    assert.deepEqual(tried, ['a', 'b']);
+  });
+
+  it('rejects an empty model list', async () => {
+    await assert.rejects(firstSuccessful([], async () => 'x', options), /No candidates/);
+  });
+
+  it('times out a promise that never settles', async () => {
+    await assert.rejects(withTimeout(new Promise(() => {}), 10), TimeoutError);
+    assert.equal(await withTimeout(Promise.resolve(7), 10), 7);
+  });
+
+  it('builds the model list without duplicates or blanks', () => {
+    assert.deepEqual(uniqueInOrder(['gemini-a', ' gemini-b ', '', 'gemini-a']), ['gemini-a', 'gemini-b']);
   });
 });
