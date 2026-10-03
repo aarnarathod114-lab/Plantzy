@@ -19,5 +19,5 @@ export const config = {
   /** Upper bound for JSON bodies. An 8 MB photo is ~10.7 MB once base64-encoded. */
   jsonBodyLimit: '12mb',
   upstreamTimeoutMs: 8_000,
-  aiTimeoutMs: 30_000,
+  aiTimeoutMs: 20_000,
 } as const;
