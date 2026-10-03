@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #FAFBF9;
+    color: #133826;
+  }
+  h1, h2, .font-serif-plant {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+/* Custom scrollbars and styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(20, 60, 40, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 60, 40, 0.35);
+}
+
+/* Custom Plantzy Pastel Colors */
+.bg-pastel-pink-soft {
+  background-color: #FFF0F4;
+}
+.bg-pastel-pink-subtle {
+  background-color: #FCE7EC;
+}
+.border-pastel-pink {
+  border-color: #F9CAD6;
+}
+.text-pastel-pink-dark {
+  color: #9F1239;
+}
+
+.bg-mint-soft {
+  background-color: #E8F8F2;
+}
+.bg-mint-subtle {
+  background-color: #D1F5E4;
+}
+.border-mint {
+  border-color: #A3E9C8;
+}
+.text-mint-dark {
+  color: #065F46;
+}
+
+.bg-pastel-yellow-soft {
+  background-color: #FEF9E7;
+}
+.bg-pastel-yellow-subtle {
+  background-color: #FDF3C7;
+}
+.border-pastel-yellow {
+  border-color: #FDE68A;
+}
+.text-pastel-yellow-dark {
+  color: #92400E;
+}
+
+.bg-dark-green {
+  background-color: #143D2B;
+}
+.text-dark-green {
+  color: #143D2B;
+}
+.border-dark-green {
+  border-color: #143D2B;
+}
